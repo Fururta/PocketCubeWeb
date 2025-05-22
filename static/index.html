@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Pocket Cube Web</title>
+  <style>
+    #cube-canvas { border: 1px solid #333; background: #eee; }
+    button { margin: 0.2em; }
+    #controls { margin-bottom: 1em; }
+  </style>
+</head>
+<body>
+  <h2>Pocket Cube Web</h2>
+  <canvas id="cube-canvas" width="220" height="220"></canvas>
+  <div id="controls">
+    <button onclick="randomCube()">Random</button>
+    <button onclick="solveCube()">Solve</button>
+    <button onclick="move(0)">Move 0</button>
+    <button onclick="move(1)">Move 1</button>
+    <button onclick="move(2)">Move 2</button>
+    <button onclick="move(3)">Move 3</button>
+    <button onclick="move(4)">Move 4</button>
+    <button onclick="move(5)">Move 5</button>
+  </div>
+  <script>
+    // Mappatura colori: [U, R, F, D, L, B]
+    const colors = ['#fff', '#f00', '#0f0', '#ff0', '#00f', '#ffa500'];
+    // Ogni sticker: [faccia, posizione]
+    const stickers = [
+      // Up (bianco)
+      [0,0],[0,1],[0,2],[0,3],
+      // Right (rosso)
+      [1,0],[1,1],[1,2],[1,3],
+      // Front (verde)
+      [2,0],[2,1],[2,2],[2,3],
+      // Down (giallo)
+      [3,0],[3,1],[3,2],[3,3],
+      // Left (blu)
+      [4,0],[4,1],[4,2],[4,3],
+      // Back (arancione)
+      [5,0],[5,1],[5,2],[5,3]
+    ];
+
+    // Stato iniziale: ogni sticker ha il suo colore
+    let cube = Array.from({length: 24}, (_,i) => i);
+
+    function renderCube() {
+      const ctx = document.getElementById('cube-canvas').getContext('2d');
+      ctx.clearRect(0,0,220,220);
+
+      // Dove disegnare ogni faccia (x, y)
+      const faces = [
+        [60, 10],   // Up
+        [110, 60],  // Right
+        [60, 60],   // Front
+        [60, 110],  // Down
+        [10, 60],   // Left
+        [160, 60],  // Back
+      ];
+
+      // Per ogni faccia
+      for(let f=0; f<6; f++) {
+        const [fx, fy] = faces[f];
+        for(let i=0; i<4; i++) {
+          // Trova l'indice dello sticker per questa faccia e posizione
+          let idx = stickers.findIndex(([face,pos]) => face===f && pos===i);
+          // Prendi il colore dal cubo (modulo 6 per sicurezza)
+          let color = colors[Math.floor((cube[idx] ?? idx)/4) % 6];
+          // Calcola posizione quadratino
+          let x = fx + (i%2)*30;
+          let y = fy + Math.floor(i/2)*30;
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, 28, 28);
+          ctx.strokeStyle = "#333";
+          ctx.strokeRect(x, y, 28, 28);
+        }
+      }
+    }
+
+    async function randomCube() {
+      const res = await fetch('/random');
+      const data = await res.json();
+      cube = data.cube.slice(0,24); // Prendi solo i primi 24 sticker
+      renderCube();
+    }
+
+    async function move(idx) {
+      const res = await fetch('/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cube, move: idx})
+      });
+      const data = await res.json();
+      cube = data.cube.slice(0,24);
+      renderCube();
+    }
+
+    async function solveCube() {
+      const res = await fetch('/solve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cube})
+      });
+      const data = await res.json();
+      alert('Soluzione: ' + data.solution.join(', '));
+    }
+
+    randomCube();
+  </script>
+</body>
+</html>
